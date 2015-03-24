@@ -1,0 +1,129 @@
+<html>
+
+<body>
+<!-- Search area -->
+<h1>Your search:</h1>
+<input type="text" id="wikilink" size="50"/>
+<button id="submit" type="submit" onclick="submit()">Process</button>
+
+<br />
+
+<!-- Results -->
+<h1 id="page_name"></h1>
+
+<h1>Linked wiki pages</h1>
+<p id="links">
+</p>
+
+<h1>Present in:</h1>
+<p id="categories">
+</p>
+
+<script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+
+<script>
+
+GET = parseGETParams();
+
+
+$(document).ready(function() { 
+   ajaxRequests = 0;
+   $('#wikilink').focus();
+
+   if (GET['q']) {
+      search(GET['q']);
+   }
+});
+   
+
+// Request Wikipedia's API for metadata
+function search(url) {
+   $('#links').empty(); 
+   $('#categories').empty();
+   $('#submit').html('Searching...');
+
+   split = url.split('/');
+   name = split[split.length-1];
+   $('#page_name').html('<a target="_blank" href="' + url + '">' + name + '</a>');
+
+   $.ajax({
+   url:"http://en.wikipedia.org/w/api.php?action=query&prop=links&format=json&&plnamespace=0&pllimit=max&iwurl=&titles=" + name,
+   type:'GET',
+   dataType:'JSONP',
+   success: parselinks,
+   });
+   ajaxRequests++;
+
+   $.ajax({
+   url:"http://en.wikipedia.org/w/api.php?action=query&prop=categories&format=json&clshow=!hidden&iwurl=&titles=" + name,
+   type:'GET',
+   dataType:'JSONP',
+   success: parseCategories,
+   });
+   ajaxRequests++;
+}
+
+
+// AJAX callback: fills the link list
+function parselinks(data) {
+   for (page in data.query.pages) {
+      for (key in data.query.pages[page].links) {
+         $('#links').append(
+            '<a target="_blank" href="?q=http://en.wikipedia.org/wiki/' + data.query.pages[page].links[key].title.replace(' ', '_') + '">[search]</a>' +
+            '<a target="_blank" href="http://en.wikipedia.org/wiki/' + data.query.pages[page].links[key].title.replace(' ', '_') + '">' +
+            data.query.pages[page].links[key].title + '</a><br />');
+      }
+   }
+
+   ajaxRequests--;
+   if (ajaxRequests == 0) {
+      onSearchEnded();
+   }
+}
+
+
+// AJAX callback: fills the linked categories
+function parseCategories(data) {
+   for (page in data.query.pages) {
+     for (key in data.query.pages[page].categories) {
+         $('#categories').append('<a target="_blank" href="http://en.wikipedia.org/wiki/' + data.query.pages[page].categories[key].title.replace(' ', '_') + '">' + data.query.pages[page].categories[key].title + '</a><br/>');
+     }
+
+   }
+   ajaxRequests--;
+   if (ajaxRequests == 0) {
+      onSearchEnded();
+   }
+}
+
+
+// Called whenever all API calls have ended
+function onSearchEnded() {
+   $('#submit').html('Process');
+}
+
+
+// Form submit
+function submit() {
+   search($('#wikilink').val());
+}
+
+
+// Returns a JSON dict containing GET parameters
+function parseGETParams() {
+   GET = {};
+   if (location.href.indexOf('?') > -1) {
+      getStr = location.href.split("?")[1];
+      params = getStr.split('&');
+      for (param in params) {
+         key = params[param].split('=')[0];
+         value = params[param].split('=')[1];
+         GET[key] = value;
+      }
+   }
+   return GET;
+}
+</script>
+
+</body>
+</html>
